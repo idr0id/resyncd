@@ -1,0 +1,4 @@
+/vendor
+/resynced
+!example.toml
+*.toml
