@@ -1,4 +1,4 @@
 /vendor
 /resynced
-!example.toml
 *.toml
+!example.toml

@@ -1,0 +1,12 @@
+[[sync]]
+source = "/Users/username/projects/a"
+target = "root@example.com:/srv/http/example.com"
+exclude = [
+  "**/.idea",
+  "**/.git",
+  "some-file",
+]
+  [sync.rsync]
+  rsh = "/usr/bin/ssh -i /Users/username/.ssh/id_rsa -o StrictHostKeyChecking=no"
+  acls = true
+  perms = true
