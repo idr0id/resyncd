@@ -14,7 +14,7 @@ $ resyncd example.toml
 
 ```
 [[sync]]
-source = "/Users/username/projects/a"
+source = "/Users/username/projects/example"
 target = "root@example.com:/srv/http/example.com"
 exclude = [
   "**/.idea",
