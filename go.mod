@@ -1,4 +1,4 @@
-module resyncd
+module github.com/idr0id/resyncd
 
 go 1.13
 
