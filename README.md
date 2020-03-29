@@ -19,7 +19,8 @@ target = "root@example.com:/srv/http/example.com"
 exclude = [
   "**/.idea",
   "**/.git",
-  "some-file",
+  "some-file-in-any-folder",
+  "/path/to/specified/file"
 ]
   [sync.rsync]
   rsh = "/usr/bin/ssh -i /Users/username/.ssh/id_rsa -o StrictHostKeyChecking=no"
