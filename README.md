@@ -26,4 +26,16 @@ exclude = [
   rsh = "/usr/bin/ssh -i /Users/username/.ssh/id_rsa -o StrictHostKeyChecking=no"
   acls = true
   perms = true
+  
+[[sync]]
+source = "/Users/username/projects/example2"
+target = "root@example.com:/srv/http/example2.com"
+exclude = [
+  "**/.idea",
+  "**/.git",
+]
+  [sync.rsync]
+  rsh = "/usr/bin/ssh -i /Users/username/.ssh/id_rsa -o StrictHostKeyChecking=no"
+  acls = true
+  perms = true
 ```
