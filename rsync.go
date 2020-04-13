@@ -22,20 +22,13 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 	r.wg.Add(1)
 	defer r.wg.Done()
 
-	source := cfg.Source
-	target := cfg.Target
-
-	if source != "" && source[len(source)-1] != '/' {
-		source += "/"
-	}
-	if target != "" && target[len(target)-1] != '/' {
-		target += "/"
-	}
+	source := cfg.Source.String()
+	target := cfg.Target.String()
 
 	ctx := karma.Describe("source", source).Describe("target", target)
 	logger.Infof(ctx, "initial synchronization started")
 
-	err := r.sync(source, target, grsync.RsyncOptions{
+	task := grsync.NewTask(source, target, grsync.RsyncOptions{
 		Rsh:     cfg.Rsync.Rsh,
 		ACLs:    cfg.Rsync.ACLs,
 		Perms:   cfg.Rsync.Perms,
@@ -43,10 +36,10 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 		Stats:   true,
 		Delete:  true,
 	})
-	if err != nil {
-		logger.Fatalf(ctx.Reason(err), "synchronization failed")
+	if err := task.Run(); err != nil {
+		logger.Fatalf(logTask(ctx, task).Reason(err), "synchronization failed")
 	}
-	logger.Infof(ctx, "initial synchronization completed")
+	logger.Infof(logTask(ctx, task), "initial synchronization completed")
 
 	go func() {
 		r.wg.Add(1)
@@ -82,8 +75,7 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 						Describe("files", changed)
 
 					logger.Debugf(ctx, "synchronization started")
-
-					err := r.sync(
+					task := grsync.NewTask(
 						source,
 						target,
 						grsync.RsyncOptions{
@@ -100,11 +92,12 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 							IgnoreErrors: true,
 							Force:        true,
 						})
-
-					if err != nil {
-						logger.Errorf(ctx.Reason(err), "synchronization failed")
+					if err := task.Run(); err != nil {
+						logger.Errorf(
+							logTask(ctx, task).Reason(err),
+							"synchronization failed")
 					}
-					logger.Infof(ctx, "synchronization complete")
+					logger.Infof(logTask(ctx, task), "synchronization complete")
 				}()
 
 			case <-r.done:
@@ -114,21 +107,14 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 	}()
 }
 
-func (r *rsync) sync(source, target string, options grsync.RsyncOptions) error {
-	task := grsync.NewTask(source, target, options)
-	if err := task.Run(); err != nil {
-		ctx := karma.
-			Describe("source", source).
-			Describe("target", target).
-			Describe("stdout", task.Log().Stdout).
-			Describe("stderr", task.Log().Stderr)
-		return ctx.Reason(err)
-	}
-	return nil
+func logTask(ctx *karma.Context, task *grsync.Task) *karma.Context {
+	return ctx.
+		Describe("stdout", task.Log().Stdout).
+		Describe("stderr", task.Log().Stderr)
 }
 
 func (r *rsync) stop() {
-	logger.Info("stopping rsync")
+	logger.Debugf(nil, "stopping rsync")
 	close(r.done)
 	r.wg.Wait()
 }

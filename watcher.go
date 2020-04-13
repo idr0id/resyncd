@@ -44,21 +44,22 @@ func (s *watcher) start(
 	cfg configSync,
 	syncChan chan<- string,
 ) {
-	ctx := karma.Describe("path", cfg.Source)
+	source := cfg.Source.String()
+	ctx := karma.Describe("path", source)
 	logger.Infof(ctx, "watching directory")
 
 	go func() {
 		s.wg.Add(1)
 		defer s.wg.Done()
 
-		excludes := newFileMatchers(cfg.Source, cfg.Exclude)
+		excludes := newFileMatchers(source, cfg.Exclude)
 
-		deviceID, err := fsevents.DeviceForPath(cfg.Source)
+		deviceID, err := fsevents.DeviceForPath(source)
 		if err != nil {
 			logger.Fatalf(ctx.Reason(err), "failed to retrieve device for path")
 		}
 		stream := &fsevents.EventStream{
-			Paths:   []string{cfg.Source},
+			Paths:   []string{source},
 			Latency: 500 * time.Millisecond,
 			Device:  deviceID,
 			Flags:   fsevents.FileEvents | fsevents.WatchRoot,
@@ -89,7 +90,7 @@ func (s *watcher) start(
 					}
 
 					logger.Debugf(ctx, "detected changed file: %s", path)
-					syncChan <- path[len(cfg.Source):]
+					syncChan <- path[len(source):]
 				}
 			}
 		}
