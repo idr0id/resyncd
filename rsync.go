@@ -91,7 +91,7 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 							ACLs:         cfg.Rsync.ACLs,
 							Perms:        cfg.Rsync.Perms,
 							Include:      changed,
-							Exclude:      []string{"*"},
+							Exclude:      cfg.Exclude,
 							Progress:     true,
 							Stats:        false,
 							Verbose:      true,
