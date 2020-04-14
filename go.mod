@@ -9,7 +9,7 @@ require (
 	github.com/kovetskiy/lorg v0.0.0-20200107130803-9a7136a95634
 	github.com/reconquest/cog v0.0.0-20191208202052-266c2467b936
 	github.com/reconquest/karma-go v0.0.0-20200225150538-5e903a7b8526
-	github.com/stretchr/testify v1.5.1 // indirect
+	github.com/stretchr/testify v1.5.1
 	github.com/zazab/zhash v0.0.0-20170403032415-ad45b89afe7a // indirect
 	github.com/zloylos/grsync v0.0.0-20200204095520-71a00a7141be
 )

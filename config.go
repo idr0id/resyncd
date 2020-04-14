@@ -20,8 +20,5 @@ type configRsync struct {
 }
 
 func (p path) String() string {
-	if p == "" || p[len(p)-1] == '/' {
-		return string(p)
-	}
-	return string(p) + "/"
+	return endsWithSlash(string(p))
 }

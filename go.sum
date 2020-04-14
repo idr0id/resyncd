@@ -6,8 +6,6 @@ github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815 h1:bWDMxwH3px2JBh
 github.com/docopt/docopt-go v0.0.0-20180111231733-ee0de3bc6815/go.mod h1:WwZ+bS3ebgob9U8Nd0kOddGdZWjyMGR8Wziv+TBNwSE=
 github.com/fsnotify/fsevents v0.1.1 h1:/125uxJvvoSDDBPen6yUZbil8J9ydKZnnl3TWWmvnkw=
 github.com/fsnotify/fsevents v0.1.1/go.mod h1:+d+hS27T6k5J8CRaPLKFgwKYcpS7GwW3Ule9+SC2ZRc=
-github.com/idr0id/grsync v0.0.0-20200328155829-b481b4f86bdb h1:QAid03mHHQHiNjBQxKhohX38RnijxGpvPr8SK7Uxv4g=
-github.com/idr0id/grsync v0.0.0-20200328155829-b481b4f86bdb/go.mod h1:2utuy8p4VcWXfB5p9wTL+VCberFM+MwTDjDf1nr8s78=
 github.com/idr0id/grsync v0.0.0-20200328163231-f3086de9b59d h1:+fdWb2FE+qTdY2SYrPYN7C7e/3/qnZXz0QAwZSxOWqM=
 github.com/idr0id/grsync v0.0.0-20200328163231-f3086de9b59d/go.mod h1:2utuy8p4VcWXfB5p9wTL+VCberFM+MwTDjDf1nr8s78=
 github.com/kovetskiy/lorg v0.0.0-20200107130803-9a7136a95634 h1:szpgh20EtHoQhJ38jrp7S2nlrhf56GSwa4de0hMfc2U=
