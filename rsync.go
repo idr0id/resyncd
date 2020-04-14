@@ -82,7 +82,7 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 							Rsh:          cfg.Rsync.Rsh,
 							ACLs:         cfg.Rsync.ACLs,
 							Perms:        cfg.Rsync.Perms,
-							Include:      changed,
+							Include:      expandPaths(changed),
 							Exclude:      []string{"*"},
 							Progress:     true,
 							Stats:        false,
