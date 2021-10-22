@@ -37,9 +37,6 @@ func newFileMatcher(root string, pattern string) matcher {
 		if strings.Index(path, root) != 0 {
 			return false
 		}
-		if pattern == "**/baz" && path == "/foo/baz" {
-			println(regex.String() + ", path: " + path + ", root: " + root)
-		}
 		if root != "" && root != "/" {
 			path = path[len(root)-1:]
 		}
