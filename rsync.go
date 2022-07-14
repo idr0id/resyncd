@@ -1,121 +1,123 @@
 package main
 
 import (
-	"sync"
+	"log/slog"
+	"slices"
 	"time"
 
-	"github.com/reconquest/karma-go"
 	"github.com/zloylos/grsync"
 )
 
-type rsync struct {
-	done chan struct{}
-	wg   sync.WaitGroup
-}
+const (
+	bufferizeDuration = 200 * time.Millisecond
+)
 
-func newRsync() *rsync {
-	return &rsync{
-		done: make(chan struct{}),
-	}
-}
+func rsyncDirectory(
+	logger *slog.Logger,
+	conf configSync,
+	filesCh <-chan []string,
+) {
+	source := endsWithSlash(conf.Source)
+	target := endsWithSlash(conf.Target)
 
-func (r *rsync) start(cfg configSync, syncChan <-chan string) {
-	r.wg.Add(1)
-	defer r.wg.Done()
+	logger = logger.With(slog.String("source", source), slog.String("target", target))
+	logger.Info("initial synchronization")
 
-	source := cfg.Source.String()
-	target := cfg.Target.String()
+	rsyncCh := make(chan *grsync.Task, 1)
+	rsyncCh <- grsync.NewTask(source, target, newRsyncDirectoryOptions(conf))
 
-	ctx := karma.Describe("source", source).Describe("target", target)
-	logger.Infof(ctx, "initial synchronization started")
-
-	task := grsync.NewTask(source, target, grsync.RsyncOptions{
-		Rsh:     cfg.Rsync.Rsh,
-		ACLs:    cfg.Rsync.ACLs,
-		Perms:   cfg.Rsync.Perms,
-		Exclude: cfg.Exclude,
-		Stats:   true,
-		Delete:  true,
-	})
-	if err := task.Run(); err != nil {
-		logger.Fatalf(logTask(ctx, task).Reason(err), "synchronization failed")
-	}
-	logger.Infof(logTask(ctx, task), "initial synchronization completed")
-
-	r.wg.Add(1)
 	go func() {
-		defer r.wg.Done()
+		for files := range filesCh {
+			rsyncCh <- grsync.NewTask(source, target, newRsyncFilesOptions(conf, files))
+		}
+		close(rsyncCh)
+	}()
+
+	for task := range rsyncCh {
+		err := task.Run()
+
+		state := task.State()
+		logger := logger.With(
+			slog.Int("remain", state.Remain),
+			slog.Int("total", state.Total),
+			slog.Float64("progress", state.Progress),
+			slog.String("speed", state.Speed),
+		)
+
+		if err != nil {
+			logger.Error(
+				"synchronization failed",
+				slog.Any("err", err),
+				slog.String("strerr", task.Log().Stderr),
+			)
+		} else {
+			logger.Info("synchronization complete")
+		}
+	}
+}
+
+func bufferize(filesCh <-chan string, d time.Duration) <-chan []string {
+	bufferedCh := make(chan []string, 1)
+
+	go func() {
+		defer close(bufferedCh)
 
 		buffer := make([]string, 0)
-		mu := sync.Mutex{}
-		t := time.NewTicker(200 * time.Millisecond)
+		flush := func() {
+			if len(buffer) > 0 {
+				bufferedCh <- slices.Clone(buffer)
+				buffer = buffer[:0]
+			}
+		}
+
+		ticker := time.NewTicker(d)
+		defer ticker.Stop()
 
 		for {
 			select {
-			case file := <-syncChan:
-				mu.Lock()
-				buffer = append(buffer, file)
-				mu.Unlock()
-
-			case <-t.C:
-				if len(buffer) == 0 {
-					continue
+			case file, ok := <-filesCh:
+				if !ok {
+					flush()
+					return
 				}
+				buffer = append(buffer, file)
 
-				mu.Lock()
-				changed := buffer
-				buffer = []string{}
-				mu.Unlock()
-
-				r.wg.Add(1)
-				go func() {
-					defer r.wg.Done()
-
-					ctx := karma.Describe("source", source).
-						Describe("target", target).
-						Describe("files", changed)
-
-					logger.Debugf(ctx, "synchronization started")
-					task := grsync.NewTask(
-						source,
-						target,
-						grsync.RsyncOptions{
-							Rsh:          cfg.Rsync.Rsh,
-							ACLs:         cfg.Rsync.ACLs,
-							Perms:        cfg.Rsync.Perms,
-							Include:      expandPaths(changed),
-							Exclude:      []string{"*"},
-							Progress:     true,
-							Stats:        false,
-							Verbose:      true,
-							Recursive:    true,
-							Delete:       true,
-							IgnoreErrors: true,
-							Force:        true,
-						})
-					if err := task.Run(); err != nil {
-						logger.Errorf(
-							logTask(ctx, task).Reason(err),
-							"synchronization failed")
-					}
-					logger.Infof(logTask(ctx, task), "synchronization complete")
-				}()
-
-			case <-r.done:
-				return
+			case <-ticker.C:
+				flush()
 			}
 		}
 	}()
+
+	return bufferedCh
 }
 
-func (r *rsync) stop() {
-	logger.Debugf(nil, "stopping rsync")
-	close(r.done)
-	r.wg.Wait()
+func newRsyncFilesOptions(conf configSync, files []string) grsync.RsyncOptions {
+	return grsync.RsyncOptions{
+		Rsh:          conf.Rsync.Rsh,
+		ACLs:         conf.Rsync.ACLs,
+		Perms:        conf.Rsync.Perms,
+		Include:      expandPaths(files),
+		Exclude:      []string{"*"},
+		Contimeout:   conf.Rsync.getConnectTimeoutSeconds(),
+		Timeout:      conf.Rsync.getTimeoutSeconds(),
+		Progress:     true,
+		Stats:        false,
+		Verbose:      true,
+		Recursive:    true,
+		Delete:       true,
+		IgnoreErrors: true,
+		Force:        true,
+	}
 }
 
-func logTask(ctx *karma.Context, task *grsync.Task) *karma.Context {
-	return ctx.
-		Describe("stdout", task.Log().Stdout).
-		Describe("stderr", task.Log().Stderr)
+func newRsyncDirectoryOptions(conf configSync) grsync.RsyncOptions {
+	return grsync.RsyncOptions{
+		Rsh:     conf.Rsync.Rsh,
+		ACLs:    conf.Rsync.ACLs,
+		Perms:   conf.Rsync.Perms,
+		Exclude: conf.Exclude,
+		Timeout: rsyncDefaultTimeoutSeconds,
+		Stats:   true,
+		Delete:  true,
+	}
 }

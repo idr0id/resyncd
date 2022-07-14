@@ -19,16 +19,16 @@ func (m matchers) match(path string) bool {
 }
 
 func newFileMatcher(root string, pattern string) matcher {
-	prepared := regexp.QuoteMeta(pattern)
-	prepared = strings.ReplaceAll(prepared, "\\*\\*", ".*")
-	prepared = strings.ReplaceAll(prepared, "\\*", "[^/]*")
+	pattern = regexp.QuoteMeta(pattern)
+	pattern = strings.ReplaceAll(pattern, "\\*\\*", ".*")
+	pattern = strings.ReplaceAll(pattern, "\\*", "[^/]*")
 
 	starting := ""
-	if prepared[0] == '/' {
+	if pattern[0] == '/' {
 		starting = "^"
 	}
 	regex := regexp.MustCompile(
-		fmt.Sprintf(`%s%s(/.+)?$`, starting, prepared))
+		fmt.Sprintf(`%s%s(/.+)?$`, starting, pattern))
 
 	if root != "" && root[len(root)-1] != '/' {
 		root += "/"

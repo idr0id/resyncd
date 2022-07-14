@@ -118,34 +118,26 @@ func TestFileMatcher(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		for _, path := range testCase.positiveMatches {
-			// arrange
-			matcher := newFileMatcher(testCase.root, testCase.pattern)
-			// act
-			isMatched := matcher(path)
-			// assert
-			if isMatched != true {
+	for _, tc := range testCases {
+		for _, path := range tc.positiveMatches {
+			matcher := newFileMatcher(tc.root, tc.pattern)
+			if matcher(path) == false {
 				t.Errorf(
 					"path `%s` should be matched (root: `%s`, pattern: `%s`)",
 					path,
-					testCase.root,
-					testCase.pattern)
+					tc.root,
+					tc.pattern)
 			}
 		}
 
-		for _, path := range testCase.negativeMatches {
-			// arrange
-			matcher := newFileMatcher(testCase.root, testCase.pattern)
-			// act
-			isMatched := matcher(path)
-			// assert
-			if isMatched != false {
+		for _, path := range tc.negativeMatches {
+			matcher := newFileMatcher(tc.root, tc.pattern)
+			if matcher(path) == true {
 				t.Errorf(
 					"path `%s` should not be matched (root: `%s`, pattern: `%s`)",
 					path,
-					testCase.root,
-					testCase.pattern)
+					tc.root,
+					tc.pattern)
 			}
 		}
 	}

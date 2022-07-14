@@ -1,23 +1,23 @@
 package main
 
 import (
-	"github.com/kovetskiy/lorg"
-	"github.com/reconquest/cog"
+	"log/slog"
+	"os"
+	"time"
+
+	"github.com/lmittmann/tint"
 )
 
-var logger *cog.Logger
+func setupLogger(verbose bool) *slog.Logger {
+	level := slog.LevelInfo
+	if verbose {
+		level = slog.LevelDebug
+	}
 
-func setupLogger() {
-	format := lorg.NewFormat("${time} ${level:[%s]:right:short} ${prefix}%s")
+	opts := &tint.Options{
+		Level:      level,
+		TimeFormat: time.Kitchen,
+	}
 
-	stderr := lorg.NewLog()
-	stderr.SetIndentLines(true)
-	stderr.SetFormat(format)
-
-	logger = cog.NewLogger(stderr)
-	logger.SetLevel(lorg.LevelInfo)
-}
-
-func verboseLogging() {
-	logger.SetLevel(lorg.LevelDebug)
+	return slog.New(tint.NewHandler(os.Stderr, opts))
 }

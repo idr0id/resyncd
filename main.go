@@ -1,13 +1,15 @@
 package main
 
 import (
+	"context"
+	"log/slog"
 	"os"
 	"os/signal"
+	"sync"
 	"syscall"
 
 	"github.com/BurntSushi/toml"
 	"github.com/docopt/docopt-go"
-	"github.com/reconquest/karma-go"
 )
 
 var version = "develop"
@@ -23,42 +25,53 @@ options:
 `
 
 func main() {
-	setupLogger()
-
 	args, err := docopt.ParseArgs(usage, nil, version)
 	if err != nil {
 		panic(err)
 	}
 
-	if args["--verbose"].(bool) {
-		verboseLogging()
-	}
+	logger := setupLogger(args["--verbose"].(bool))
 
 	var conf config
 	if _, err := toml.DecodeFile(args["<config>"].(string), &conf); err != nil {
-		logger.Fatalf(err, "unable to read configuration file")
+		logger.Error("unable to read configuration file", slog.Any("err", err))
+		os.Exit(1)
 	}
 
 	if len(conf.Syncs) == 0 {
-		logger.Fatalf(nil, "no configuration found")
+		logger.Error("no configuration found")
+		os.Exit(1)
 	}
 
-	logger.Infof(nil, "loading %d configurations", len(conf.Syncs))
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
 
-	synchronizers := make([]*synchronizer, 0)
-	for _, cfg := range conf.Syncs {
-		synchronizer := newSynchronizer()
-		synchronizers = append(synchronizers, synchronizer)
-		go synchronizer.start(cfg)
+	var wg sync.WaitGroup
+	for _, syncConf := range conf.Syncs {
+		filesCh := make(chan string)
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			err := watchDirectory(ctx, logger, syncConf, filesCh)
+			if err != nil && err != context.Canceled {
+				logger.Error("error watching directory", slog.Any("err", err))
+				cancel()
+			}
+		}()
+
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+
+			bufferedCh := bufferize(filesCh, bufferizeDuration)
+			rsyncDirectory(logger, syncConf, bufferedCh)
+		}()
 	}
 
-	signalChan := make(chan os.Signal, 1)
-	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
+	<-ctx.Done()
+	logger.Info("stopping synchronization")
 
-	sig := <-signalChan
-	logger.Infof(karma.Describe("signal", sig.String()), "stopping synchronizers")
-
-	for _, synchronizer := range synchronizers {
-		synchronizer.stop()
-	}
+	wg.Wait()
 }
