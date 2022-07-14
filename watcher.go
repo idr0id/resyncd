@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/fsnotify/fsevents"
-	"github.com/reconquest/karma-go"
 	"sync"
 	"time"
+
+	"github.com/fsnotify/fsevents"
+	"github.com/reconquest/karma-go"
 )
 
 var flagsDescription = map[fsevents.EventFlags]string{
@@ -36,7 +37,7 @@ type watcher struct {
 
 func newWatcher() *watcher {
 	return &watcher{
-		done: make(chan struct{}, 0),
+		done: make(chan struct{}),
 	}
 }
 
@@ -48,8 +49,8 @@ func (s *watcher) start(
 	ctx := karma.Describe("path", source)
 	logger.Infof(ctx, "watching directory")
 
+	s.wg.Add(1)
 	go func() {
-		s.wg.Add(1)
 		defer s.wg.Done()
 
 		excludes := newFileMatchers(source, cfg.Exclude)

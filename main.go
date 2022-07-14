@@ -1,11 +1,13 @@
 package main
 
 import (
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/BurntSushi/toml"
 	"github.com/docopt/docopt-go"
 	"github.com/reconquest/karma-go"
-	"os"
-	"os/signal"
 )
 
 var version = "develop"
@@ -50,17 +52,13 @@ func main() {
 		go synchronizer.start(cfg)
 	}
 
-	signalChan := make(chan os.Signal)
-	signal.Notify(signalChan, os.Interrupt, os.Kill)
+	signalChan := make(chan os.Signal, 1)
+	signal.Notify(signalChan, os.Interrupt, syscall.SIGTERM)
 
-	for {
-		select {
-		case sig := <-signalChan:
-			logger.Infof(karma.Describe("signal", sig.String()), "stopping synchronizers")
-			for _, synchronizer := range synchronizers {
-				synchronizer.stop()
-			}
-			return
-		}
+	sig := <-signalChan
+	logger.Infof(karma.Describe("signal", sig.String()), "stopping synchronizers")
+
+	for _, synchronizer := range synchronizers {
+		synchronizer.stop()
 	}
 }

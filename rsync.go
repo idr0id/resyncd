@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/reconquest/karma-go"
-	"github.com/zloylos/grsync"
 	"sync"
 	"time"
+
+	"github.com/reconquest/karma-go"
+	"github.com/zloylos/grsync"
 )
 
 type rsync struct {
@@ -41,8 +42,8 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 	}
 	logger.Infof(logTask(ctx, task), "initial synchronization completed")
 
+	r.wg.Add(1)
 	go func() {
-		r.wg.Add(1)
 		defer r.wg.Done()
 
 		buffer := make([]string, 0)
@@ -66,8 +67,8 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 				buffer = []string{}
 				mu.Unlock()
 
+				r.wg.Add(1)
 				go func() {
-					r.wg.Add(1)
 					defer r.wg.Done()
 
 					ctx := karma.Describe("source", source).
@@ -107,14 +108,14 @@ func (r *rsync) start(cfg configSync, syncChan <-chan string) {
 	}()
 }
 
-func logTask(ctx *karma.Context, task *grsync.Task) *karma.Context {
-	return ctx.
-		Describe("stdout", task.Log().Stdout).
-		Describe("stderr", task.Log().Stderr)
-}
-
 func (r *rsync) stop() {
 	logger.Debugf(nil, "stopping rsync")
 	close(r.done)
 	r.wg.Wait()
+}
+
+func logTask(ctx *karma.Context, task *grsync.Task) *karma.Context {
+	return ctx.
+		Describe("stdout", task.Log().Stdout).
+		Describe("stderr", task.Log().Stderr)
 }
